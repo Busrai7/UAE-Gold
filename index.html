@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>حاسبة الذهب</title>
+<meta name="theme-color" content="#eef2f0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d1716" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="حاسبة الذهب">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600&family=Reem+Kufi:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  /* Layout: inputs column beside a weighing-slip result panel whose hero is the final amount; stacks on phones. */
+  :root {
+    --bg: #eef2f0;
+    --surface: #fbfcfb;
+    --ink: #14302d;
+    --muted: #5b716d;
+    --line: #d3dcd9;
+    --accent: #a87a1f;
+    --accent-soft: #f1e6cb;
+    --on-accent: #ffffff;
+    --slip: #14302d;
+    --slip-ink: #eaf1ef;
+    --slip-muted: #9db4af;
+    --slip-line: #2c4a46;
+    --slip-gold: #e3b646;
+    --slip-bad: #f0907f;
+    --slip-hero-bg: #1c3d39;
+    --font-display: "Reem Kufi", "Readex Pro", "Segoe UI", Tahoma, sans-serif;
+    --font-body: "Readex Pro", "Segoe UI", Tahoma, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1716;
+      --surface: #142220;
+      --ink: #e4eeeb;
+      --muted: #93aaa5;
+      --line: #274440;
+      --accent: #e3b646;
+      --accent-soft: #2f2a17;
+      --on-accent: #1b1403;
+      --slip: #0a1211;
+      --slip-ink: #eaf1ef;
+      --slip-muted: #8aa39e;
+      --slip-line: #223a36;
+      --slip-gold: #e3b646;
+      --slip-bad: #f0907f;
+      --slip-hero-bg: #13211f;
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    padding-top: max(28px, calc(env(safe-area-inset-top, 0px) + 16px));
+    padding-bottom: max(40px, calc(env(safe-area-inset-bottom, 0px) + 24px));
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 960px; margin: 0 auto; display: grid; gap: 24px; }
+  h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 5vw, 38px); margin: 0; text-wrap: balance; }
+  .lead { margin: 4px 0 0; color: var(--muted); max-width: 60ch; }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 18px; min-width: 0; }
+  .group { display: grid; gap: 18px; min-width: 0; }
+  fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 8px; }
+  legend, .label { font-size: 13px; font-weight: 500; color: var(--muted); padding: 0; margin-bottom: 2px; letter-spacing: .02em; }
+
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg input, .mode input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label {
+    padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+    font-size: 14px; background: var(--surface); color: var(--ink); user-select: none;
+  }
+  .seg input:checked + label { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+  .seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .seg label:hover { border-color: var(--accent); }
+
+  .mode { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .mode label { text-align: center; padding: 12px 10px; cursor: pointer; font-weight: 500; font-size: 16px; background: var(--surface); color: var(--muted); user-select: none; }
+  .mode input:checked + label { background: var(--accent); color: var(--on-accent); }
+  .mode input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: -4px; }
+
+  .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 420px) { .row { grid-template-columns: minmax(0, 1fr); } }
+  .field { display: grid; gap: 6px; min-width: 0; }
+  .input-wrap { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); padding-inline: 12px; min-width: 0; }
+  .input-wrap:focus-within { border-color: var(--accent); outline: 2px solid var(--accent-soft); }
+  .input-wrap input {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink);
+    font: inherit; font-size: 18px; font-weight: 500; padding: 10px 0; outline: none;
+    font-variant-numeric: tabular-nums; direction: ltr; text-align: right;
+  }
+  .unit { color: var(--muted); font-size: 13px; white-space: nowrap; padding-inline-start: 8px; }
+  .hint { font-size: 12.5px; color: var(--muted); margin: 0; }
+  .hint .stamp { color: var(--ink); font-weight: 500; }
+  .actions { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 2px; }
+  .link-btn { background: none; border: 0; padding: 0; font: inherit; font-size: 12.5px; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .link-btn:focus-visible, .copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .slip { background: var(--slip); color: var(--slip-ink); border-radius: 10px; padding: 14px; display: grid; gap: 14px; min-width: 0; }
+  .hero { background: var(--slip-hero-bg); border: 1px solid var(--slip-gold); border-radius: 8px; padding: 18px 16px 16px; display: grid; gap: 6px; }
+  .hero h2 { font-family: var(--font-display); font-size: 17px; font-weight: 500; margin: 0; color: var(--slip-ink); }
+  .hero .sub { margin: 0; font-size: 12.5px; color: var(--slip-muted); }
+  .hero-value {
+    font-family: var(--font-display); font-weight: 700; color: var(--slip-gold);
+    font-size: clamp(42px, 10vw, 60px); line-height: 1.05; margin-top: 6px;
+    font-variant-numeric: tabular-nums; direction: ltr; text-align: right; overflow-wrap: anywhere;
+  }
+  .hero-value small { font-size: 18px; font-weight: 500; color: var(--slip-muted); margin-inline-start: 8px; }
+  .lines { display: grid; padding-inline: 6px; }
+  .line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--slip-line); }
+  .line:last-child { border-bottom: 0; }
+  .line span:first-child { color: var(--slip-muted); font-size: 14px; }
+  .line span:last-child { font-variant-numeric: tabular-nums; direction: ltr; font-weight: 500; }
+  .line .neg { color: var(--slip-bad); }
+  .line .pos { color: var(--slip-gold); }
+  .copy {
+    background: transparent; color: var(--slip-ink); border: 1px solid var(--slip-line); border-radius: 8px;
+    font: inherit; font-size: 14px; padding: 9px 14px; cursor: pointer; justify-self: start; margin-inline-start: 6px; margin-bottom: 4px;
+  }
+  .copy:hover { border-color: var(--slip-gold); }
+  .foot { font-size: 12.5px; color: var(--muted); margin: 0; max-width: 80ch; }
+  [hidden] { display: none !important; }
+  @media (prefers-reduced-motion: no-preference) { .input-wrap, .seg label, .mode label { transition: border-color .15s, background .15s; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>حاسبة الذهب</h1>
+    <p class="lead">احسب كم تدفع عند الشراء، أو كم تستلم عند البيع، حسب العيار والوزن وسعر الغرام.</p>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-label="المدخلات">
+      <div class="mode" role="radiogroup" aria-label="نوع العملية">
+        <input type="radio" name="mode" id="mode-buy" value="buy" checked><label for="mode-buy">شراء</label>
+        <input type="radio" name="mode" id="mode-sell" value="sell"><label for="mode-sell">بيع</label>
+      </div>
+
+      <fieldset>
+        <legend>العيار</legend>
+        <div class="seg">
+          <input type="radio" name="karat" id="k24" value="24"><label for="k24">عيار 24</label>
+          <input type="radio" name="karat" id="k22" value="22"><label for="k22">عيار 22</label>
+          <input type="radio" name="karat" id="k21" value="21" checked><label for="k21">عيار 21</label>
+          <input type="radio" name="karat" id="k18" value="18"><label for="k18">عيار 18</label>
+          <input type="radio" name="karat" id="k14" value="14"><label for="k14">عيار 14</label>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label class="label" for="price" id="price-label">سعر غرام الذهب الخام عيار 21</label>
+        <div class="input-wrap">
+          <input id="price" type="number" inputmode="decimal" step="0.01" min="0" value="414.50">
+          <span class="unit">درهم / غرام</span>
+        </div>
+        <p class="hint" id="price-hint"></p>
+        <div class="actions">
+          <button type="button" class="link-btn" id="fill-market">تعبئة كل العيارات بأسعار السوق</button>
+          <button type="button" class="link-btn" id="fill-spot">تعبئة بالسعر العالمي الفوري</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label class="label" for="weight">الوزن</label>
+          <div class="input-wrap">
+            <input id="weight" type="number" inputmode="decimal" step="0.01" min="0" value="10">
+            <span class="unit" id="weight-unit">غرام</span>
+          </div>
+        </div>
+        <fieldset>
+          <legend>وحدة الوزن</legend>
+          <div class="seg">
+            <input type="radio" name="unit" id="u-g" value="g" checked><label for="u-g">غرام</label>
+            <input type="radio" name="unit" id="u-t" value="tola"><label for="u-t">تولة</label>
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="group" id="buy-fields">
+        <fieldset>
+          <legend>طريقة احتساب المصنعية</legend>
+          <div class="seg">
+            <input type="radio" name="mmode" id="m-g" value="perGram" checked><label for="m-g">درهم لكل غرام</label>
+            <input type="radio" name="mmode" id="m-p" value="percent"><label for="m-p">نسبة من الخام</label>
+            <input type="radio" name="mmode" id="m-t" value="total"><label for="m-t">مبلغ إجمالي</label>
+          </div>
+        </fieldset>
+
+        <div class="field">
+          <label class="label" for="making" id="making-label">المصنعية لكل غرام</label>
+          <div class="input-wrap">
+            <input id="making" type="number" inputmode="decimal" step="0.01" min="0" value="15">
+            <span class="unit" id="making-unit">درهم / غرام</span>
+          </div>
+          <p class="hint">القيمة الافتراضية مثال فقط. المصنعية تختلف حسب المحل والتصميم.</p>
+        </div>
+
+        <fieldset>
+          <legend>ضريبة القيمة المضافة 5%</legend>
+          <div class="seg">
+            <input type="radio" name="vat" id="v-m" value="making" checked><label for="v-m">على المصنعية فقط</label>
+            <input type="radio" name="vat" id="v-a" value="all"><label for="v-a">على الإجمالي</label>
+            <input type="radio" name="vat" id="v-n" value="none"><label for="v-n">بدون ضريبة</label>
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="group" id="sell-fields" hidden>
+        <div class="field">
+          <label class="label" for="deduct">خصم التاجر من سعر الخام</label>
+          <div class="input-wrap">
+            <input id="deduct" type="number" inputmode="decimal" step="0.1" min="0" max="100" value="2">
+            <span class="unit">%</span>
+          </div>
+          <p class="hint">عادة يخصم التاجر نحو 2% عند شراء الذهب المستعمل، ولا تُسترد المصنعية. اسأل المحل عن نسبته.</p>
+        </div>
+        <div class="field">
+          <label class="label" for="paid">المبلغ الذي دفعته عند الشراء (اختياري)</label>
+          <div class="input-wrap">
+            <input id="paid" type="number" inputmode="decimal" step="0.01" min="0" value="" placeholder="0.00">
+            <span class="unit">درهم</span>
+          </div>
+          <p class="hint">إذا أدخلته، تظهر لك الزيادة أو النقص عن سعر الشراء.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slip" aria-live="polite" aria-label="النتيجة">
+      <div class="hero">
+        <h2 id="hero-title">المبلغ الإجمالي</h2>
+        <p class="sub" id="hero-sub">عيار 21 · 10 غرام</p>
+        <div class="hero-value"><span id="hero-val">0.00</span><small>درهم</small></div>
+      </div>
+      <div class="lines">
+        <div class="line" id="r1"><span id="r1-l"></span><span id="r1-v">0.00</span></div>
+        <div class="line" id="r2"><span id="r2-l"></span><span id="r2-v">0.00</span></div>
+        <div class="line" id="r3"><span id="r3-l"></span><span id="r3-v">0.00</span></div>
+        <div class="line" id="r4"><span id="r4-l"></span><span id="r4-v">0.00</span></div>
+      </div>
+      <button type="button" class="copy" id="copy">نسخ الملخص</button>
+    </section>
+  </div>
+
+  <p class="foot">الأسعار تُدخل يدوياً وتُحفظ على هذا الجهاز لكل عيار. القيم الأولية أسعار 31 أكتوبر 2026 كمثال، وتتغير يومياً. التولة تساوي 11.6638 غرام. طريقة احتساب الضريبة ونسبة خصم التاجر تختلف من محل لآخر، فاسأل المحل قبل الشراء أو البيع.</p>
+</main>
+
+<script>
+(function () {
+  var PRESETS = {
+    market: { 24: 467, 22: 432.5, 21: 414.5, 18: 355.5, 14: 277.25 },
+    spot:   { 24: 457.28, 22: 419.17, 21: 400.12, 18: 342.96, 14: 266.75 }
+  };
+  var TOLA = 11.6638;
+  var KEY = 'goldcalc.v1';
+  var state = {
+    mode: 'buy', karat: 21, unit: 'g', mmode: 'perGram', vat: 'making',
+    weight: '10', making: '15', deduct: '2',
+    prices: Object.assign({}, PRESETS.market), stamps: {}
+  };
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return;
+      var s = JSON.parse(raw);
+      Object.keys(state).forEach(function (k) {
+        if (s[k] === undefined) return;
+        if (k === 'prices' || k === 'stamps') state[k] = Object.assign({}, state[k], s[k]);
+        else state[k] = s[k];
+      });
+    } catch (e) {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = function (n) { return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var num = function (el) { var v = parseFloat(el.value); return isFinite(v) && v > 0 ? v : 0; };
+  var radio = function (name) { var r = document.querySelector('input[name="' + name + '"]:checked'); return r ? r.value : null; };
+  var setRadio = function (name, val) {
+    var r = document.querySelector('input[name="' + name + '"][value="' + val + '"]');
+    if (r) r.checked = true;
+  };
+  var signed = function (n) { return (n >= 0 ? '+' : '−') + fmt(Math.abs(n)); };
+
+  var stampFmt;
+  try {
+    stampFmt = new Intl.DateTimeFormat('ar-AE-u-nu-latn', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Dubai' });
+  } catch (e) { stampFmt = null; }
+  function stampText(iso) {
+    try { return stampFmt ? stampFmt.format(new Date(iso)) : new Date(iso).toLocaleString('en-GB'); }
+    catch (e) { return ''; }
+  }
+
+  var lastSummary = '';
+
+  function setRow(i, label, value, cls, show) {
+    var row = $('r' + i);
+    row.hidden = !show;
+    $('r' + i + '-l').textContent = label;
+    var v = $('r' + i + '-v');
+    v.textContent = value;
+    v.className = cls || '';
+  }
+
+  function syncPriceUi() {
+    var p = state.prices[state.karat];
+    $('price').value = (Math.round(p * 100) / 100).toString();
+    $('price-label').textContent = 'سعر غرام الذهب الخام عيار ' + state.karat;
+    var st = state.stamps[state.karat];
+    $('price-hint').innerHTML = st
+      ? 'آخر تعديل لك: <span class="stamp">' + stampText(st) + '</span>'
+      : 'سعر مثال بتاريخ 31 أكتوبر 2026. عدّله ليطابق سعر اليوم.';
+  }
+
+  function calc() {
+    var weight = num($('weight'));
+    var grams = state.unit === 'tola' ? weight * TOLA : weight;
+    var price = num($('price'));
+
+    var unitName = state.unit === 'tola' ? 'تولة' : 'غرام';
+    var wTxt = weight.toLocaleString('en-US', { maximumFractionDigits: 3 });
+    var raw = grams * price;
+    var gramsNote = state.unit === 'tola' ? ' (' + grams.toLocaleString('en-US', { maximumFractionDigits: 2 }) + ' غرام)' : '';
+    $('hero-sub').textContent = 'عيار ' + state.karat + ' · ' + wTxt + ' ' + unitName + gramsNote;
+
+    if (state.mode === 'buy') {
+      var m = num($('making'));
+      var making = state.mmode === 'perGram' ? grams * m : state.mmode === 'percent' ? raw * m / 100 : m;
+      var vatBase = state.vat === 'making' ? making : state.vat === 'all' ? raw + making : 0;
+      var vat = vatBase * 0.05;
+      var total = raw + making + vat;
+      var eff = grams > 0 ? total / grams : 0;
+
+      $('hero-title').textContent = 'المبلغ الإجمالي الذي ستدفعه';
+      $('hero-val').textContent = fmt(total);
+      var vatLabel = state.vat === 'none' ? 'الضريبة (بدون)' : state.vat === 'all' ? 'الضريبة 5% على الإجمالي' : 'الضريبة 5% على المصنعية';
+      setRow(1, 'سعر الذهب الخام', fmt(raw), '', true);
+      setRow(2, 'المصنعية', fmt(making), '', true);
+      setRow(3, vatLabel, fmt(vat), '', true);
+      setRow(4, 'التكلفة الفعلية للغرام', fmt(eff), '', true);
+
+      lastSummary = [
+        'شراء ذهب — عيار ' + state.karat + '، ' + wTxt + ' ' + unitName,
+        'سعر الغرام الخام: ' + fmt(price) + ' درهم',
+        'الذهب الخام: ' + fmt(raw) + ' درهم',
+        'المصنعية: ' + fmt(making) + ' درهم',
+        'الضريبة: ' + fmt(vat) + ' درهم',
+        'الإجمالي: ' + fmt(total) + ' درهم'
+      ].join('\n');
+    } else {
+      var d = Math.min(num($('deduct')), 100);
+      var cut = raw * d / 100;
+      var receive = raw - cut;
+      var perGram = grams > 0 ? receive / grams : 0;
+      var paid = num($('paid'));
+      var dTxt = d.toLocaleString('en-US', { maximumFractionDigits: 2 });
+
+      $('hero-title').textContent = 'المبلغ الذي ستستلمه عند البيع';
+      $('hero-val').textContent = fmt(receive);
+      setRow(1, 'قيمة الذهب الخام', fmt(raw), '', true);
+      setRow(2, 'خصم التاجر ' + dTxt + '%', '−' + fmt(cut), 'neg', true);
+      setRow(3, 'الفرق عن سعر الشراء', paid > 0 ? signed(receive - paid) : '', paid > 0 && receive - paid < 0 ? 'neg' : 'pos', paid > 0);
+      setRow(4, 'المبلغ المستلم للغرام', fmt(perGram), '', true);
+
+      lastSummary = [
+        'بيع ذهب — عيار ' + state.karat + '، ' + wTxt + ' ' + unitName,
+        'سعر الغرام الخام: ' + fmt(price) + ' درهم',
+        'قيمة الذهب الخام: ' + fmt(raw) + ' درهم',
+        'خصم التاجر ' + dTxt + '%: ' + fmt(cut) + ' درهم',
+        'المبلغ المستلم: ' + fmt(receive) + ' درهم'
+      ].concat(paid > 0 ? ['الفرق عن سعر الشراء: ' + signed(receive - paid) + ' درهم'] : []).join('\n');
+    }
+  }
+
+  function syncMakingUi() {
+    var cfg = {
+      perGram: ['المصنعية لكل غرام', 'درهم / غرام'],
+      percent: ['نسبة المصنعية من سعر الخام', '%'],
+      total:   ['إجمالي المصنعية', 'درهم']
+    }[state.mmode];
+    $('making-label').textContent = cfg[0];
+    $('making-unit').textContent = cfg[1];
+  }
+
+  function syncModeUi() {
+    $('buy-fields').hidden = state.mode !== 'buy';
+    $('sell-fields').hidden = state.mode !== 'sell';
+  }
+
+  function on(name, fn) {
+    document.querySelectorAll('input[name="' + name + '"]').forEach(function (r) { r.addEventListener('change', fn); });
+  }
+
+  on('mode', function () { state.mode = radio('mode'); syncModeUi(); calc(); save(); });
+  on('karat', function () { state.karat = parseInt(radio('karat'), 10); syncPriceUi(); calc(); save(); });
+  on('unit', function () {
+    state.unit = radio('unit');
+    $('weight-unit').textContent = state.unit === 'tola' ? 'تولة' : 'غرام';
+    calc(); save();
+  });
+  on('mmode', function () { state.mmode = radio('mmode'); syncMakingUi(); calc(); save(); });
+  on('vat', function () { state.vat = radio('vat'); calc(); save(); });
+
+  $('price').addEventListener('input', function () {
+    var v = parseFloat($('price').value);
+    if (isFinite(v) && v > 0) {
+      state.prices[state.karat] = v;
+      state.stamps[state.karat] = new Date().toISOString();
+      $('price-hint').innerHTML = 'آخر تعديل لك: <span class="stamp">' + stampText(state.stamps[state.karat]) + '</span>';
+    }
+    calc(); save();
+  });
+  $('weight').addEventListener('input', function () { state.weight = $('weight').value; calc(); save(); });
+  $('making').addEventListener('input', function () { state.making = $('making').value; calc(); save(); });
+  $('deduct').addEventListener('input', function () { state.deduct = $('deduct').value; calc(); save(); });
+  $('paid').addEventListener('input', calc);
+
+  function fill(key) {
+    state.prices = Object.assign({}, PRESETS[key]);
+    state.stamps = {};
+    syncPriceUi(); calc(); save();
+  }
+  $('fill-market').addEventListener('click', function () { fill('market'); });
+  $('fill-spot').addEventListener('click', function () { fill('spot'); });
+
+  $('copy').addEventListener('click', function () {
+    var btn = $('copy');
+    var done = function (ok) {
+      btn.textContent = ok ? 'تم النسخ' : 'تعذر النسخ';
+      setTimeout(function () { btn.textContent = 'نسخ الملخص'; }, 1800);
+    };
+    try {
+      navigator.clipboard.writeText(lastSummary).then(function () { done(true); }, function () { done(false); });
+    } catch (e) { done(false); }
+  });
+
+  load();
+  setRadio('mode', state.mode);
+  setRadio('karat', state.karat);
+  setRadio('unit', state.unit);
+  setRadio('mmode', state.mmode);
+  setRadio('vat', state.vat);
+  $('weight').value = state.weight;
+  $('making').value = state.making;
+  $('deduct').value = state.deduct;
+  $('weight-unit').textContent = state.unit === 'tola' ? 'تولة' : 'غرام';
+  syncPriceUi(); syncMakingUi(); syncModeUi(); calc();
+
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
